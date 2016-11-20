@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
 from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash
 
 import datetime
 
@@ -16,35 +17,57 @@ class User(db.Model):
 	created_at = db.Column(db.DateTime, default=datetime.datetime.now())
 
 	def __init__(self, username, password, email):
-		self.username = username
-		self.password = self.__create_password(password)
+		self.username = self.__generate_username(username)
+		self.password = self.__generate_password(password)
 		self.email = email
-		self.errors = {}
+		self.__errors = {}
 
-	def __create_password(self, password):
+	def __generate_password(self, password):
 		return generate_password_hash(password)
+
+	def __generate_username(self, username):
+		return username.lower()
+		
+	@staticmethod
+	def get_conditional(username, email):
+		#http://docs.sqlalchemy.org/en/latest/orm/tutorial.html
+		return or_(User.username == username, User.email == email)
 
 	@classmethod
 	def new(cls, username, password, email):
 		return User(username, password, email )
 			
+	@classmethod 
+	def login(cls, key, password):
+		user = User.query.filter(User.get_conditional(key, key)).first()
+		return user if user is not None and check_password_hash(user.password, password) else None
+	
+	@property
+	def errors(self):
+		return self.__errors
+
+	@property
+	def arroba(self):
+		return "@{username}".format(username = self.username)
+
+	def get_username(self):
+		return self.username[1::]
+
 	def save(self):
-		self.validate_fields()
-		if not self.errors:
+		if self.is_valid_to_save():
 			db.session.add(self)
 			db.session.commit()
 			return True
 		
-	def validate_fields(self):
-		#http://docs.sqlalchemy.org/en/latest/orm/tutorial.html
-		self.errors.clear()
-		
-		conditional = or_(User.username == self.username, User.email == self.email)
+	def is_valid_to_save(self):
+		self.__errors.clear()
+		conditional = User.get_conditional(self.username, self.email)
 		user = User.query.with_entities(User.username, User.email).filter(conditional).first()
 			
 		if user is not None:
 			if user.username == self.username:
-				self.errors['username'] = "Username ya se encuentra registrado en la base de datos!"
+				self.__errors['username'] = "Username ya se encuentra registrado en la base de datos!"
 			if user.email == self.email:
-				self.errors['email'] = "Email ya se encuentra registrado en la base de datos!"
-
+				self.__errors['email'] = "Email ya se encuentra registrado en la base de datos!"
+			return False
+		return True
