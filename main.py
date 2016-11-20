@@ -20,7 +20,7 @@ csrf = CsrfProtect()
 app.config.from_object(DevelopmentConfig)
 
 __author__ = 'Eduardo Ismael García Pérez'
-
+	
 @app.errorhandler(404)
 def not_found(error):
 	return "Not Found."
@@ -30,11 +30,14 @@ def register():
 	form = RegistrationForm(request.form)
 	if request.method == 'POST' and form.validate():
 		user = User.new(username = form.username.data, password = form.password.data, email = form.email.data)
-		
-		if user is not None:
+
+		if user.save():
 			flash("Usuario creado exitosamente")
 		else:
-			flash("No fue posible crear el usuario")
+			print user.errors
+			for field in user.errors:
+				form[field].errors.append(user.errors[field])
+			flash("Ooops no podemos crear tu cuenta, verifica tus datos!")
 
 	return render_template('register.html', form = form)
 

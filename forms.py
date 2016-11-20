@@ -13,4 +13,3 @@ class RegistrationForm(Form):
     email = StringField('Email', password_validator)
     password = PasswordField('Password', email_validator )
     
-  
