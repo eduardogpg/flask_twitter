@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import or_
 from werkzeug.security import generate_password_hash
 
 import datetime
@@ -35,12 +36,15 @@ class User(db.Model):
 			return True
 		
 	def validate_fields(self):
+		#http://docs.sqlalchemy.org/en/latest/orm/tutorial.html
 		self.errors.clear()
-		user = User.query.with_entities(User.username, User.email).filter(User.username == self.username or User.email == self.email).first()
-				
+		
+		conditional = or_(User.username == self.username, User.email == self.email)
+		user = User.query.with_entities(User.username, User.email).filter(conditional).first()
+			
 		if user is not None:
 			if user.username == self.username:
 				self.errors['username'] = "Username ya se encuentra registrado en la base de datos!"
 			if user.email == self.email:
 				self.errors['email'] = "Email ya se encuentra registrado en la base de datos!"
-		
+
