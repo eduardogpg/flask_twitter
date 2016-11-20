@@ -9,3 +9,6 @@ def add_success_message(message):
 
 def add_error_message(message):
 	flash(bootstrap_message(message, 'danger'))
+
+def add_warning_message(message):
+	flash(bootstrap_message(message, 'warning'))

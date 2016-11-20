@@ -1,5 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
+from flask_login import UserMixin
+
 from werkzeug.security import generate_password_hash
 from werkzeug.security import check_password_hash
 
@@ -7,11 +9,11 @@ import datetime
 
 db = SQLAlchemy()
 
-class User(db.Model):
+class User(db.Model, UserMixin):
 	__tablename__ = 'users'
 
 	id = db.Column(db.Integer, primary_key=True)
-	username = db.Column(db.String(50), unique=True)
+	username = db.Column(db.String(50), unique=True, index = True)
 	email = db.Column(db.String(50), unique=True)
 	password = db.Column(db.String(66))
 	created_at = db.Column(db.DateTime, default=datetime.datetime.now())
@@ -42,6 +44,10 @@ class User(db.Model):
 		user = User.query.filter(User.get_conditional(key, key)).first()
 		return user if user is not None and check_password_hash(user.password, password) else None
 	
+	@classmethod
+	def find(cls,user_id):
+		return User.query.filter(User.id == user_id).first()
+
 	@property
 	def errors(self):
 		return self.__errors
@@ -49,6 +55,7 @@ class User(db.Model):
 	@property
 	def arroba(self):
 		return "@{username}".format(username = self.username)
+
 
 	def get_username(self):
 		return self.username[1::]
@@ -71,3 +78,10 @@ class User(db.Model):
 				self.__errors['email'] = "Email ya se encuentra registrado en la base de datos!"
 			return False
 		return True
+
+
+
+
+
+
+
