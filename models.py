@@ -15,73 +15,77 @@ class User(db.Model, UserMixin):
 	id = db.Column(db.Integer, primary_key=True)
 	username = db.Column(db.String(50), unique=True, index = True)
 	email = db.Column(db.String(50), unique=True)
-	password = db.Column(db.String(66))
+	encrypted_password = db.Column(db.String(66))
 	created_at = db.Column(db.DateTime, default=datetime.datetime.now())
 
 	def __init__(self, username, password, email):
-		self.username = self.__generate_username(username)
-		self.password = self.__generate_password(password)
+		self.username = username
+		self.password = password
 		self.email = email
 		self.__errors = {}
 
-	def __generate_password(self, password):
-		return generate_password_hash(password)
-
-	def __generate_username(self, username):
-		return username.lower()
-		
-	@staticmethod
-	def get_conditional(username, email):
-		#http://docs.sqlalchemy.org/en/latest/orm/tutorial.html
-		return or_(User.username == username, User.email == email)
-
-	@classmethod
-	def new(cls, username, password, email):
-		return User(username, password, email )
-			
-	@classmethod 
-	def login(cls, key, password):
-		user = User.query.filter(User.get_conditional(key, key)).first()
-		return user if user is not None and check_password_hash(user.password, password) else None
 	
 	@classmethod
+	def new(cls, username, password, email):
+		return User(username, password, email)
+
+	@classmethod
 	def find(cls,user_id):
+		return User.query.get(User.id == user_id)
+	
+	@classmethod
+	def find_by_identifier(cls, username = '', email = ''):
+		conditional = or_(User.username == username, User.email == email)
 		return User.query.filter(User.id == user_id).first()
+
+	@property
+	def user(self):
+		return "@{username}".format(username = self.username)
+	
+	@property
+	def password(self):
+		return None
+
+	@password.setter
+	def password(self, password):
+		self.encrypted_password = generate_password_hash(password)
+		
+	def verify_password(self, password):
+		return check_password_hash(self.encrypted_password, password)
 
 	@property
 	def errors(self):
 		return self.__errors
 
-	@property
-	def arroba(self):
-		return "@{username}".format(username = self.username)
-
-
-	def get_username(self):
-		return self.username[1::]
-
 	def save(self):
 		if self.is_valid_to_save():
 			db.session.add(self)
 			db.session.commit()
+			self.__errors.clear()
 			return True
-		
-	def is_valid_to_save(self):
+
+	def __set_errors(self, model):
 		self.__errors.clear()
-		conditional = User.get_conditional(self.username, self.email)
-		user = User.query.with_entities(User.username, User.email).filter(conditional).first()
-			
-		if user is not None:
-			if user.username == self.username:
+
+		if model is not None:
+			if model.username == self.username:
 				self.__errors['username'] = "Username ya se encuentra registrado en la base de datos!"
-			if user.email == self.email:
+			if model.email == self.email:
 				self.__errors['email'] = "Email ya se encuentra registrado en la base de datos!"
-			return False
+
+		return True if self.__errors else False
+
+	def is_valid_to_save(self):
+		return self.is_valid_to_create() if self.id is None else self.is_valid_to_update()
+		
+	def is_valid_to_update(self):
+		response = User.find_by_identifier(self.username, self.email)
+		if response is not None and response.id != self.id:
+			return not self.__set_errors(response)
 		return True
 
-
-
-
-
-
+	def is_valid_to_create(self):
+		response = User.find_by_identifier(self.username, self.email)
+		return not self.__set_errors(response)
+		
 
