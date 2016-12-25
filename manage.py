@@ -7,19 +7,25 @@ from flask_script import Shell
 
 from flask_migrate import Migrate, MigrateCommand
 
-#import os
-#config_name = os.getenv('FLASK_CONFIG')
+import os
+config_name = os.getenv('ENVIROMENT_FLASK_CONFIG') or 'development'
 
-app = create_app(app_config['development'])
+app = create_app(config_name)
 migrate = Migrate(app, db)
+manager = Manager(app)
 
 def console():
-	return dict(app = app, db = db, User = User)
+	return dict(app=app, db=db, User=User)
 
+@manager.command
+def test():
+	import unittest
+	tests = unittest.TestLoader().discover('tests')
+	unittest.TextTestRunner(verbosity=2).run(tests)
 
-manager = Manager(app)
 manager.add_command('console', Shell(make_context = console))
 manager.add_command('db', MigrateCommand)
+
 
 if __name__ == '__main__':
 	manager.run()

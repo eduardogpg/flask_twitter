@@ -20,14 +20,18 @@ class ProductionConfig(Config):
     """
     DEBUG = False
 
-class TestConfig(Config):
+class TestingConfig(Config):
     """
     Production configurations
     """
-    DEBUG = False    
+    DEBUG = False
+    SQLALCHEMY_DATABASE_URI = 'mysql://root:@localhost/twitter_test'
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
 
 app_config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
-    'test': TestConfig,
+    'testing': TestingConfig,
 }
+
+
